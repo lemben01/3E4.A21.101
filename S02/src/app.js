@@ -9,22 +9,58 @@ app.get('/premiere', (req, res) => {
     res.send('Notre premiere route avec express');
 });
 
-app.get('/date', (req,res) => {
+app.get('/date', (req, res) => {
     res.status(200);
     res.set('Content-type', 'text/plain');
     res.send(dayjs().format("YYYY-MM-DD HH:mm"));
 });
 
-app.get('/somme', (req, res) => {
-    //log(req.query);
+//maths/some
+//maths/difference
+//maths/produit
+//maths/quotient    
+//maths/reste - (modulo)
+//pour passer des parametres dans les operations****
+app.get('/maths/:operation', (req, res) => {
+    const operation = req.params.operation
+    log(operation);
+    
     const a = parseInt(req.query.a, 10);
     const b = parseInt(req.query.b, 10);
+    let result = 0;
+    switch (operation) {
+        case 'somme':
+            result = a+b;
+            break;
+        case 'difference':
+            result = a-b;
+            break;
+        case 'produit':
+            result = a*b;
+            break;
+        case 'quotient':
+            result = a/b;
+            break;
+        case 'reste':
+            result = a%b;
+            break;
+        default:
+            res.status(400);
+            //on met un return pour sortir directement de la fonction sinon les lignes 52,53,54 font causer une erreur...
+            return res.send('Operation non reconnue');
+            //on pourrais aussi faire 
+            //return res.end();
+    }
     res.status(200);
     res.set('Content-type', 'text/html');
+    res.send(`${result}`);
+    /*//log(req.query);
+    const a = parseInt(req.query.a, 10);
+    const b = parseInt(req.query.b, 10);
     //res.send((a + b).toString());
-    //meme chose que
-    res.send(`${a + b}`);
+    //meme chose que*/
 
 });
+
 
 export default app;
