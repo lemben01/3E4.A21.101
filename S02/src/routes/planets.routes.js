@@ -1,6 +1,7 @@
 import express from 'express';
 import HttpError from 'http-errors';
-import Http from 'http-status';
+import httpStatus from 'http-status';
+import HttpStatus from 'http-status';
 import PLANETS from '../data/planets.js';
 
 
@@ -10,12 +11,22 @@ const router = express.Router();
 class PlanetsRoutes {
     constructor() {
         //Definition des routes pour la ressource planet 
-        router.get('/planets', this.getAll); //Retrieve  toutes les planetes
-        router.get('/planets/:idPlanet', this.getOne);
-        router.post('/planets', this.post);
+        router.get('/', this.getAll); //Retrieve  toutes les planetes
+        router.get('/:idPlanet', this.getOne);
+        router.post('/', this.post);
+        router.delete('/:idPlanet', this.deleteOne);
+        router.patch('/:idPlanet', this.patch);
+        router.put('/:idPlanet', this.put);
     }
+    patch(req, res, next) {
+        return next(HttpError.NotImplemented());
+    }
+    put(req, res, next) {
+        return next(HttpError.NotImplemented());
+    }
+
     getAll(req, res, next) {
-        res.status(200);
+        res.status(HttpStatus.OK);
         res.set('Content-Type', 'application/json');
 
         res.send(PLANETS);
@@ -37,7 +48,29 @@ class PlanetsRoutes {
         
     }
     post(req, res, next) {
+        //pour debogue
+        //console.log(req.body);
+        const newPlanet = req.body;
 
+        const planet = PLANETS.find(p => p.id == newPlanet.id);
+        if(planet) {
+            //J'ai un doublon === erreur
+            return next(HttpError.Conflict(`Une planete avec l'identifiant ${newPlanet.id} existe deja.`));
+        } else {
+            PLANETS.push(newPlanet);
+            res.status(httpStatus.CREATED); //code: 201
+            res.json(newPlanet);
+        }
+    }
+    deleteOne(req, res, next) {
+        const idPlanet = req.params.idPlanet;
+        const index = PLANETS.findIndex(p =>  p.id == idPlanet);
+        if(index === -1){
+            return next(HttpError.NotFound(`Une planete avec l'identifiant ${newPlanet.id} existe deja.`));
+        } else {
+            PLANETS.splice(index, 1);
+            res.status(HttpStatus.NO_CONTENT).end();
+        }
     }
 }
 
