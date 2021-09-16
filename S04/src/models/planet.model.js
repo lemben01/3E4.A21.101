@@ -1,11 +1,11 @@
-import { mongo, Mongoose } from "mongoose";
+import mongoose  from "mongoose";
 
-const planetShema = mongoose.Shema({
+const planetShema = mongoose.Schema({
     name: { type: String, unique: true, required: true },
     discoveredBy: { type: String, required: true, index: true },
     discoveryDate: Date,
     temperature: Number,
-    satellites: [string],
+    satellites: [String],
     position: {
         x: { type: Number, required: true, min: -1000, max: 1000 },
         y: { type: Number, required: true, min: -1000, max: 1000 },
