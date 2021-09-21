@@ -2,6 +2,7 @@ import express from 'express';
 import HttpError from 'http-errors';
 import httpStatus from 'http-status';
 import HttpStatus from 'http-status';
+import planets from '../data/planets.js';
 
 import PLANETS from '../data/planets.js';
 
@@ -29,16 +30,32 @@ class PlanetsRoutes {
     }
 
     async getAll(req, res, next) {
-
+        //Critere pour la bd 
         const filter = {};
         if (req.query.explorer) {
             filter.discoveredBy = req.query.explorer;
         }
-
+        //parametre de transformation
+        const transformOptions = {};
+        if (req.query.unit) {
+            const unit = req.query.unit;
+            if (unit === 'c') {
+                transformOptions.unit = unit;
+            } else {
+                return next(HttpError.BadRequest('le parametre unit doit avoir la valeur c pour celsius'));
+            }
+        }
         try {
-            const planet = await planetsRepository.retriveAll(filter);
+            let planet = await planetsRepository.retriveAll(filter);
+            //Je veux un nouv tableau des planetes transformees
+            //map() = une boucle
+            planet = planet.map(p => {
+                p = p.toObject({ getters: true, virtuals: false });
+                p = planetsRepository.transform(p, transformOptions);
+                return p;
+            });
             res.status(200).json(planet);
-        } catch(err) {
+        } catch (err) {
             return next(err);
         }
     }
@@ -46,13 +63,27 @@ class PlanetsRoutes {
     async getOne(req, res, next) {
         const idPlanet = req.params.idPlanet;
 
+        //parametre de transformation
+        const transformOptions = {};
+        if (req.query.unit) {
+            const unit = req.query.unit;
+            if (unit === 'c') {
+                transformOptions.unit = unit;
+            } else {
+                return next(HttpError.BadRequest('le parametre unit doit avoir la valeur c pour celsius'));
+            }
+        }
+
         try {
-            const planet = await planetsRepository.retriveById(idPlanet);
+            let planet = await planetsRepository.retriveById(idPlanet);
+
             //console.log(planet);   
             if (!planet) {
                 //2. La planete n'existe pas = 404 - Not Found
                 return next(HttpError.NotFound(`la planete avec le id ${idPlanet} n'existe pas`))
             } else {
+                planet = planet.toObject({ getters: true, virtuals: false });
+                planet = planetsRepository.transform(planet, transformOptions);
                 res.status(200);
                 res.json(planet); //content-type et send la reponse
             }
@@ -62,33 +93,40 @@ class PlanetsRoutes {
 
 
     }
-    post(req, res, next) {
+    async post(req, res, next) {
         //pour debogue
         //console.log(req.body);
         const newPlanet = req.body;
 
-        const planet = PLANETS.find(p => p.id == newPlanet.id);
-        if (planet) {
-            //J'ai un doublon === erreur
-            return next(HttpError.Conflict(`Une planete avec l'identifiant ${newPlanet.id} existe deja.`));
-        } else {
-            PLANETS.push(newPlanet);
-            res.status(httpStatus.CREATED); //code: 201
-            res.json(newPlanet);
+        //TODO: Validation rapide jusqu'a la semaine +/- 8
+        try {
+            //newPlanet -> req.body
+            let planetAdded = await planetsRepository.create(newPlanet);
+            planetAdded = planetAdded.toObject({ getters: true, virtuals: false });
+            planetAdded = planetsRepository.transform(planetAdded);
+
+
+            res.status(201).json(planetAdded) //created
+        } catch (err) {
+            return next(err);
         }
     }
-    deleteOne(req, res, next) {
+    async deleteOne(req, res, next) {
         const idPlanet = req.params.idPlanet;
-        const index = PLANETS.findIndex(p => p.id == idPlanet);
-        if (index === -1) {
-            return next(HttpError.NotFound(`Une planete avec l'identifiant ${newPlanet.id} existe deja.`));
-        } else {
-            PLANETS.splice(index, 1);
-            res.status(HttpStatus.NO_CONTENT).end();
+
+        try {
+            const deleteResult = await planetsRepository.delete(idPlanet);
+            console.log(deleteResult);
+            if (!deleteResult) {
+                return next(HttpError.NotFound(`Une planete avec l'identifiant ${idPlanet.id} existe deja.`));
+            } else {
+                res.status(204).end();
+            }
+        } catch (err) {
+            return next(err);
         }
     }
 }
-
 //Super important, ne pas oublier ces deux lignes
 new PlanetsRoutes();
 export default router;
