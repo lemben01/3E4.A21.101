@@ -22,13 +22,7 @@ class PlanetsRoutes {
         router.patch('/:idPlanet', this.patch);
         router.put('/:idPlanet', this.put);
     }
-    patch(req, res, next) {
-        return next(HttpError.NotImplemented());
-    }
-    put(req, res, next) {
-        return next(HttpError.NotImplemented());
-    }
-
+    
     async getAll(req, res, next) {
         //Critere pour la bd 
         const filter = {};
@@ -99,6 +93,10 @@ class PlanetsRoutes {
         const newPlanet = req.body;
 
         //TODO: Validation rapide jusqu'a la semaine +/- 8
+        //important pour le tp -- valide que l'utilisateur n<entre pas une planet vide
+        if(Object.keys(newPlanet).length === 0) {
+            return next(HttpError.BadRequest('La planete ne peut pas etre vide'));
+        }
         try {
             //newPlanet -> req.body
             let planetAdded = await planetsRepository.create(newPlanet);
@@ -126,6 +124,28 @@ class PlanetsRoutes {
             return next(err);
         }
     }
+
+    async patch(req, res, next) {
+        const planetModif = req.body;
+        try {
+            let planet = await planetsRepository.update(req.params.idPlanet, planetModif);
+
+            if(!planet) {
+                return next(HttpError.NotFound(`Une planete avec l'identifiant ${req.params.idPlanet} n'existe pas.`))
+            }
+
+            planet = planet.toObject({getters : false, virtuals: false});
+            planet = planetsRepository.transform(planet);
+
+            res.status(200).json(planet);
+        } catch(err) {
+            return next(err);
+        }
+    }
+    put(req, res, next) {
+        return next(HttpError.NotImplemented());
+    }
+
 }
 //Super important, ne pas oublier ces deux lignes
 new PlanetsRoutes();
