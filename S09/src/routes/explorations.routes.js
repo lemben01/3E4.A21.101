@@ -1,4 +1,5 @@
 import express from 'express';
+import paginate from 'express-paginate';
 import HttpError from 'http-errors';
 import explorationsRepository from '../repositories/explorations.repository.js';
 
@@ -7,39 +8,67 @@ const router = express.Router();
 class ExplorationsRoutes {
 
     constructor() {
-        router.get('/', this.getAll);
+        router.get('/', paginate.middleware(20, 50), this.getAll);
         router.get('/:explorationId', this.getOne);
     }
 
-    getAll(req, res, next) {
+    async getAll(req, res, next) {
 
-    }
-
-    async getOne(req, res, next) {
-        
-        const retriveOptions = {};
-        const transformOptions = { embed:{} };
-        if(req.query.embed && req.query.embed === 'planet') {
-            retriveOptions.planet = true;
-            transformOptions.embed.planet = true;
-        }
+        const retriveOptions = {
+            skip: req.skip,
+            limit: req.query.limit
+        };
 
         try {
-            const idExploration = req.params.explorationId;
-            let exploration = await explorationsRepository.retriveById(idExploration, retriveOptions);
-            if(!exploration){
-                return next(HttpError.NotFound());
-            }
+            let [explorations, itemsCount] = await explorationsRepository.retriveAll(retriveOptions);
+            const pageCount = Math.ceil(itemsCount / req.query.limit);
+            const hasNextPage = paginate.hasNextPages(req)(pageCount);
+            explorations = explorations.map(e => {
+                e = e.toObject({ getters: false, virtuals: false });
+                e = explorationsRepository.transform(e);
+                return e;
+            });
 
-            exploration = exploration.toObject({getters:false, virtuals:false});
-            exploration = explorationsRepository.transform(exploration, transformOptions);
-            
-            res.status(200).json(exploration);
+            const response = {
+                _metadata: {
+                    hasNextPage: hasNextPage,
+                    page: req.query.page,
+                    limit: req.query.limit,
+                    skip: req.skip,
+                    totalDocuments: itemsCount,
+                    totalPages: pageCount
+                },
+                _links:{
+                    //TODO: 
+                },
+                data: explorations
+            };
+            res.status(200).json(response);
         } catch (err) {
             return next(err);
         }
     }
 
+    async getOne(req, res, next) {
+        const retriveOptions = {};
+        const transformOptions = { embed: {} };
+        if (req.query.embed && req.query.embed === 'planet') {
+            retriveOptions.planet = true;
+            transformOptions.embed.planet = true;
+        }
+        try {
+            const idExploration = req.params.explorationId;
+            let exploration = await explorationsRepository.retriveById(idExploration, retriveOptions);
+            if (!exploration) {
+                return next(HttpError.NotFound());
+            }
+            exploration = exploration.toObject({ getters: false, virtuals: false });
+            exploration = explorationsRepository.transform(exploration, transformOptions);
+            res.status(200).json(exploration);
+        } catch (err) {
+            return next(err);
+        }
+    }
 }
 
 new ExplorationsRoutes();
