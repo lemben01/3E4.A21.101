@@ -18,7 +18,8 @@ const explorationSchema = mongoose.Schema({
         //permet d'enlever le id a l'affichage
         _id:false
     }],
-    commment: String
+    commment: String,
+    id: false
 }, {
     collection: 'explorations'
 });
